@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -16,7 +16,7 @@ const loginSchema = z.object({
 
 type LoginForm = z.infer<typeof loginSchema>;
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { setAuth } = useAuthStore();
@@ -41,9 +41,7 @@ export default function LoginPage() {
       const response = await api.post('/auth/login', data);
       
       if (response.data.success) {
-        const { token, role } = response.data.data;
-        
-        // Get user info
+        const { token } = response.data.data;
         const meResponse = await api.get('/auth/me', {
           headers: { Authorization: `Bearer ${token}` }
         });
@@ -127,7 +125,6 @@ export default function LoginPage() {
             </Link>
           </p>
 
-          {/* Demo Account Info */}
           <div className="mt-6 pt-6 border-t border-gray-800">
             <p className="text-sm text-gray-500 text-center mb-3">Demo Account</p>
             <div className="bg-gray-800/30 rounded-lg p-3 text-sm">
@@ -144,5 +141,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <LoginForm />
+    </Suspense>
   );
 }
