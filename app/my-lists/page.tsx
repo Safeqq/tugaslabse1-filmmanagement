@@ -21,13 +21,10 @@ function MyLists() {
   const fetchLists = async () => {
     try {
       setLoading(true);
-      // Note: API endpoint untuk get user's film lists perlu disesuaikan
-      // Untuk sementara kita asumsikan endpoint ini ada
       const response = await api.get('/film-lists');
       
       if (response.data.success) {
-        // Group by list_status
-        const grouped = {
+        const grouped: { [key: string]: FilmList[] } = {
           watching: [],
           completed: [],
           plan_to_watch: [],
