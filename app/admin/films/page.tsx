@@ -37,57 +37,55 @@ function AddFilm() {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      setLoading(true);
-      setError('');
-      
-      const formDataToSend = new FormData();
-      formDataToSend.append('title', formData.title);
-      formDataToSend.append('synopsis', formData.synopsis);
-      formDataToSend.append('airing_status', formData.airing_status);
-      formDataToSend.append('total_episodes', formData.total_episodes.toString());
-      formDataToSend.append('release_date', formData.release_date);
-      formDataToSend.append('genres', selectedGenres.join(','));
-      
-      if (images) {
-        Array.from(images).forEach((image) => {
-          formDataToSend.append('images', image);
-        });
-      }
-      
-      const response = await api.post('/films', formDataToSend, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+  e.preventDefault();
+  try {
+    setLoading(true);
+    setError('');
+    
+    const combinedDateTime = formData.release_date && formData.release_time
+      ? `${formData.release_date} ${formData.release_time}:00`
+      : `${formData.release_date} 00:00:00`;
+    
+    const formDataToSend = new FormData();
+    formDataToSend.append('title', formData.title);
+    formDataToSend.append('synopsis', formData.synopsis);
+    formDataToSend.append('airing_status', formData.airing_status);
+    formDataToSend.append('total_episodes', formData.total_episodes.toString());
+    formDataToSend.append('release_date', combinedDateTime); // sudah digabung
+    formDataToSend.append('genres', selectedGenres.join(','));
+    
+    if (images) {
+      Array.from(images).forEach((image) => {
+        formDataToSend.append('images', image);
       });
-
-      const combinedDateTime = formData.release_date && formData.release_time
-        ? `${formData.release_date}T${formData.release_time}`
-        : formData.release_date;
-
-      formDataToSend.append('release_date', combinedDateTime);
-      
-      if (response.data.success) {
-        setSuccess('Film berhasil ditambahkan!');
-        setFormData({
-          title: '',
-          synopsis: '',
-          airing_status: 'not_yet_aired',
-          total_episodes: 12,
-          release_date: '',
-          release_time: '00:00',
-        });
-        setSelectedGenres([]);
-        setImages(null);
-        setTimeout(() => setSuccess(''), 3000);
-      }
-    } catch (err: any) {
-      setError(err.response?.data?.error || err.response?.data?.message || 'Gagal menambahkan film');
-    } finally {
-      setLoading(false);
     }
-  };
+    
+    const response = await api.post('/films', formDataToSend, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    
+    if (response.data.success) {
+      setSuccess('Film berhasil ditambahkan!');
+      setFormData({
+        title: '',
+        synopsis: '',
+        airing_status: 'not_yet_aired',
+        total_episodes: 12,
+        release_date: '',
+        release_time: '00:00',
+      });
+      setSelectedGenres([]);
+      setImages(null);
+      setTimeout(() => setSuccess(''), 3000);
+    }
+  } catch (err: any) {
+    setError(err.response?.data?.error || err.response?.data?.message || 'Gagal menambahkan film');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleGenreToggle = (genreId: string) => {
     setSelectedGenres(prev => 
