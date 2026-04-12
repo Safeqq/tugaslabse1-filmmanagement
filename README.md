@@ -1,36 +1,97 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Film Management System
 
-## Getting Started
+Sistem manajemen film dengan fitur review, rating, dan daftar tontonan pribadi.
 
-First, run the development server:
+## Tech Stack
+
+- Next.js 16 (App Router)
+- TypeScript
+- Tailwind CSS
+- Zustand (State Management)
+- React Hook Form + Zod
+- Axios
+
+## Setup
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+# Install dependencies
+pnpm install
+
+# Configure environment
+cp .env.example .env.local
+# Edit .env.local sesuai backend API URL
+
+# Run development
 pnpm dev
-# or
-bun dev
+
+# Build production
+pnpm build
+pnpm start
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Features
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Public
+- Browse film catalog (pagination & search)
+- View film details & reviews
+- View genres
+- View user profiles
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### User (Login Required)
+- Register & Login
+- Write reviews (rating 1-10)
+- React to reviews (like/dislike)
+- Add films to lists (watching/completed/plan_to_watch)
+- Toggle list visibility (public/private)
 
-## Learn More
+### Admin
+- Manage genres (CRUD)
+- Add films with multiple images & genres
 
-To learn more about Next.js, take a look at the following resources:
+## API Configuration
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Backend API: `http://localhost:3001/api/v1`
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Update di `.env.local`:
+```env
+NEXT_PUBLIC_API_URL=http://localhost:3001/api/v1
+```
 
-## Deploy on Vercel
+## Test Account
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Admin:
+```
+Email: atmin@email.com
+Password: myatmin123
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Project Structure
+
+```
+film-management/
+├── app/              # Pages (Next.js App Router)
+│   ├── admin/       # Admin pages
+│   ├── films/       # Film catalog & detail
+│   ├── genres/      # Genre listing
+│   ├── login/       # Login page
+│   ├── register/    # Register page
+│   ├── my-lists/    # User's film lists
+│   └── users/       # User profiles
+├── components/      # Reusable components
+├── hooks/          # Custom hooks
+├── lib/            # Core utilities & types
+└── public/         # Static assets
+```
+
+## Key Features Implementation
+
+- JWT Authentication with auto token injection
+- Role-based Access Control (USER/ADMIN)
+- Protected routes
+- Form validation with Zod
+- Debounced search (500ms)
+- Pagination (10-20 items per page)
+- Multiple image upload (FormData)
+- Responsive design
+- Loading & error states
+
