@@ -40,46 +40,60 @@ function MyLists() {
       console.log('Fetching film lists...');
       console.log('Auth token present:', !!localStorage.getItem('token'));
       
-      // Based on REST convention, GET /film-lists should return current user's lists
-      const response = await api.get('/film-lists');
+      // Try multiple possible endpoints
+      const endpoints = [
+        '/film-lists',
+        '/users/film-lists',
+        '/film-lists/user',
+      ];
       
-      console.log('Film lists response:', response.data);
+      let lastError = null;
       
-      if (response.data.success) {
-        // Group by list_status
-        const grouped: { [key: string]: FilmListWithDetails[] } = {
-          watching: [],
-          completed: [],
-          plan_to_watch: [],
-        };
-        
-        const data = Array.isArray(response.data.data) ? response.data.data : [];
-        console.log(`Found ${data.length} items in film lists`);
-        
-        if (data.length === 0) {
-          console.log('No items found. User might not have added any films to lists yet.');
-        }
-        
-        data.forEach((item: FilmListWithDetails) => {
-          console.log('Processing item:', item);
-          if (item.list_status && grouped[item.list_status]) {
-            grouped[item.list_status].push(item);
-          } else {
-            console.warn('Unknown list_status:', item.list_status, 'Item:', item);
+      for (const endpoint of endpoints) {
+        try {
+          console.log(`Trying GET ${endpoint}...`);
+          const response = await api.get(endpoint);
+          
+          if (response.data.success) {
+            console.log(`✅ Success with GET ${endpoint}`);
+            console.log('Film lists response:', response.data);
+            
+            // Group by list_status
+            const grouped: { [key: string]: FilmListWithDetails[] } = {
+              watching: [],
+              completed: [],
+              plan_to_watch: [],
+            };
+            
+            const data = Array.isArray(response.data.data) ? response.data.data : [];
+            console.log(`Found ${data.length} items in film lists`);
+            
+            if (data.length === 0) {
+              console.log('No items found. User might not have added any films to lists yet.');
+            }
+            
+            data.forEach((item: FilmListWithDetails) => {
+              console.log('Processing item:', item);
+              if (item.list_status && grouped[item.list_status]) {
+                grouped[item.list_status].push(item);
+              } else {
+                console.warn('Unknown list_status:', item.list_status, 'Item:', item);
+              }
+            });
+            
+            console.log('Grouped lists:', grouped);
+            setLists(grouped);
+            return; // Success, exit function
           }
-        });
-        
-        console.log('Grouped lists:', grouped);
-        console.log('Total by status:', {
-          watching: grouped.watching.length,
-          plan_to_watch: grouped.plan_to_watch.length,
-          completed: grouped.completed.length,
-        });
-        
-        setLists(grouped);
-      } else {
-        throw new Error(response.data.message || 'Failed to fetch lists');
+        } catch (err: any) {
+          console.log(`❌ Failed GET ${endpoint}:`, err.response?.status);
+          lastError = err;
+          continue;
+        }
       }
+      
+      // All endpoints failed
+      throw lastError || new Error('All endpoints failed');
       
     } catch (error: any) {
       console.error('❌ Error fetching lists:', error);
@@ -87,7 +101,7 @@ function MyLists() {
       console.error('Error status:', error.response?.status);
       
       if (error.response?.status === 404) {
-        setError('API endpoint not found. Please check if GET /api/v1/film-lists is available in the backend.');
+        setError('GET /api/v1/film-lists endpoint not found. Please check Postman documentation for the correct endpoint to retrieve user\'s film lists.');
       } else if (error.response?.status === 401) {
         setError('Unauthorized. Please login again.');
       } else {
@@ -95,7 +109,7 @@ function MyLists() {
           error.response?.data?.error || 
           error.response?.data?.message || 
           error.message ||
-          'Failed to load your lists. Please check the browser console for details.'
+          'Failed to load your lists.'
         );
       }
     } finally {
@@ -140,94 +154,99 @@ function MyLists() {
     return <LoadingSpinner />;
   }
 
-  const renderList = (title: string, items: FilmListWithDetails[], status: string, icon: string) => (
-    <div className="mb-12">
-      <div className="flex items-center gap-3 mb-6">
-        <span className="text-3xl">{icon}</span>
-        <h2 className="text-3xl font-bold gradient-text">{title}</h2>
-        <span className="text-gray-400">({items.length})</span>
-      </div>
-      {items.length > 0 ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-          {items.map((item) => (
-            <div key={item.id} className="group">
-              <Link href={`/films/${item.film_id}`}>
-                <div className="relative aspect-[2/3] rounded-lg overflow-hidden bg-gray-800 card-hover mb-3">
-                  {item.film?.images && item.film.images.length > 0 ? (
-                    <img
-                      src={getFilmPosterUrl(item.film.images)}
-                      alt={item.film?.title || item.film_title || 'Film'}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                        e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                      }}
-                    />
-                  ) : null}
-                  <div className={item.film?.images && item.film.images.length > 0 ? "hidden w-full h-full flex items-center justify-center text-gray-600" : "w-full h-full flex items-center justify-center text-gray-600"}>
-                    <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
-                    </svg>
-                  </div>
-                  
-                  {/* Visibility Badge */}
-                  <div className="absolute top-2 right-2">
-                    <span className={`px-2 py-1 text-xs rounded-full font-medium backdrop-blur-sm ${
-                      item.visibility === 'public' 
-                        ? 'bg-green-500/80 text-white' 
-                        : 'bg-gray-500/80 text-white'
-                    }`}>
-                      {item.visibility === 'public' ? '🌐' : '🔒'}
-                    </span>
-                  </div>
-
-                  {/* Rating Badge */}
-                  {item.film?.average_rating && item.film.average_rating > 0 && (
-                    <div className="absolute bottom-2 left-2">
-                      <div className="flex items-center gap-1 bg-orange-500 px-2 py-1 rounded text-xs font-bold">
-                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                        </svg>
-                        {item.film.average_rating.toFixed(1)}
-                      </div>
+  const renderList = (title: string, items: FilmListWithDetails[], status: string, icon: string) => {
+    if (!mounted) return null;
+    
+    return (
+      <div className="mb-12">
+        <div className="flex items-center gap-3 mb-6">
+          <span className="text-3xl">{icon}</span>
+          <h2 className="text-3xl font-bold gradient-text">{title}</h2>
+          <span className="text-gray-400">({items.length})</span>
+        </div>
+        {items.length > 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+            {items.map((item) => (
+              <div key={item.id} className="group">
+                <Link href={`/films/${item.film_id}`}>
+                  <div className="relative aspect-[2/3] rounded-lg overflow-hidden bg-gray-800 card-hover mb-3">
+                    {item.film?.images && item.film.images.length > 0 ? (
+                      <img
+                        src={getFilmPosterUrl(item.film.images)}
+                        alt={item.film?.title || item.film_title || 'Film'}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          const nextEl = e.currentTarget.nextElementSibling;
+                          if (nextEl) nextEl.classList.remove('hidden');
+                        }}
+                      />
+                    ) : null}
+                    <div className={item.film?.images && item.film.images.length > 0 ? "hidden w-full h-full flex items-center justify-center text-gray-600" : "w-full h-full flex items-center justify-center text-gray-600"}>
+                      <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
+                      </svg>
                     </div>
-                  )}
+                    
+                    {/* Visibility Badge */}
+                    <div className="absolute top-2 right-2">
+                      <span className={`px-2 py-1 text-xs rounded-full font-medium backdrop-blur-sm ${
+                        item.visibility === 'public' 
+                          ? 'bg-green-500/80 text-white' 
+                          : 'bg-gray-500/80 text-white'
+                      }`}>
+                        {item.visibility === 'public' ? '🌐' : '🔒'}
+                      </span>
+                    </div>
+
+                    {/* Rating Badge */}
+                    {item.film?.average_rating && item.film.average_rating > 0 && (
+                      <div className="absolute bottom-2 left-2">
+                        <div className="flex items-center gap-1 bg-orange-500 px-2 py-1 rounded text-xs font-bold">
+                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                          </svg>
+                          {item.film.average_rating.toFixed(1)}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </Link>
+                
+                <h3 className="font-semibold text-sm line-clamp-2 mb-2 group-hover:text-orange-500 transition-colors">
+                  {item.film?.title || item.film_title || 'Unknown Film'}
+                </h3>
+                
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleToggleVisibility(item.id, item.visibility)}
+                    className="flex-1 px-2 py-1 bg-white/5 hover:bg-white/10 border border-gray-600 rounded text-xs transition-all"
+                    title={`Make ${item.visibility === 'public' ? 'Private' : 'Public'}`}
+                  >
+                    {item.visibility === 'public' ? '🔒' : '🌐'}
+                  </button>
+                  <button
+                    onClick={() => handleRemoveFromList(item.id)}
+                    className="flex-1 px-2 py-1 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded text-xs transition-all"
+                    title="Remove from list"
+                  >
+                    🗑️
+                  </button>
                 </div>
-              </Link>
-              
-              <h3 className="font-semibold text-sm line-clamp-2 mb-2 group-hover:text-orange-500 transition-colors">
-                {item.film?.title || item.film_title || 'Unknown Film'}
-              </h3>
-              
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleToggleVisibility(item.id, item.visibility)}
-                  className="flex-1 px-2 py-1 bg-white/5 hover:bg-white/10 border border-gray-600 rounded text-xs transition-all"
-                  title={`Make ${item.visibility === 'public' ? 'Private' : 'Public'}`}
-                >
-                  {item.visibility === 'public' ? '🔒' : '🌐'}
-                </button>
-                <button
-                  onClick={() => handleRemoveFromList(item.id)}
-                  className="flex-1 px-2 py-1 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded text-xs transition-all"
-                  title="Remove from list"
-                >
-                  🗑️
-                </button>
               </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="glass-card p-12 text-center">
-          <p className="text-gray-400 text-lg mb-4">No films in this list yet.</p>
-          <Link href="/films" className="btn-primary inline-block px-6 py-2">
-            Browse Films
-          </Link>
-        </div>
-      )}
-    </div>
-  );
+            ))}
+          </div>
+        ) : (
+          <div className="glass-card p-12 text-center">
+            <p className="text-gray-400 text-lg mb-4">No films in this list yet.</p>
+            <Link href="/films" className="btn-primary inline-block px-6 py-2">
+              Browse Films
+            </Link>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen py-8">
