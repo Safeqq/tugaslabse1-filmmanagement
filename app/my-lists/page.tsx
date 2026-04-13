@@ -25,8 +25,10 @@ function MyLists() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     fetchLists();
   }, []);
 
@@ -36,7 +38,11 @@ function MyLists() {
       setError('');
       
       console.log('Fetching film lists...');
+      console.log('Auth token present:', !!localStorage.getItem('token'));
+      
+      // Based on REST convention, GET /film-lists should return current user's lists
       const response = await api.get('/film-lists');
+      
       console.log('Film lists response:', response.data);
       
       if (response.data.success) {
@@ -47,20 +53,51 @@ function MyLists() {
           plan_to_watch: [],
         };
         
-        response.data.data.forEach((item: FilmListWithDetails) => {
+        const data = Array.isArray(response.data.data) ? response.data.data : [];
+        console.log(`Found ${data.length} items in film lists`);
+        
+        if (data.length === 0) {
+          console.log('No items found. User might not have added any films to lists yet.');
+        }
+        
+        data.forEach((item: FilmListWithDetails) => {
           console.log('Processing item:', item);
-          if (grouped[item.list_status]) {
+          if (item.list_status && grouped[item.list_status]) {
             grouped[item.list_status].push(item);
+          } else {
+            console.warn('Unknown list_status:', item.list_status, 'Item:', item);
           }
         });
         
         console.log('Grouped lists:', grouped);
+        console.log('Total by status:', {
+          watching: grouped.watching.length,
+          plan_to_watch: grouped.plan_to_watch.length,
+          completed: grouped.completed.length,
+        });
+        
         setLists(grouped);
+      } else {
+        throw new Error(response.data.message || 'Failed to fetch lists');
       }
+      
     } catch (error: any) {
-      console.error('Error fetching lists:', error);
+      console.error('❌ Error fetching lists:', error);
       console.error('Error response:', error.response?.data);
-      setError(error.response?.data?.error || 'Failed to load your lists');
+      console.error('Error status:', error.response?.status);
+      
+      if (error.response?.status === 404) {
+        setError('API endpoint not found. Please check if GET /api/v1/film-lists is available in the backend.');
+      } else if (error.response?.status === 401) {
+        setError('Unauthorized. Please login again.');
+      } else {
+        setError(
+          error.response?.data?.error || 
+          error.response?.data?.message || 
+          error.message ||
+          'Failed to load your lists. Please check the browser console for details.'
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -99,7 +136,7 @@ function MyLists() {
     }
   };
 
-  if (loading) {
+  if (!mounted || loading) {
     return <LoadingSpinner />;
   }
 
@@ -201,8 +238,21 @@ function MyLists() {
         </div>
 
         {error && (
-          <div className="glass-card border-l-4 border-red-500 px-6 py-4 mb-8">
-            <p className="text-red-400">{error}</p>
+          <div className="glass-card border-l-4 border-yellow-500 px-6 py-4 mb-8">
+            <p className="text-yellow-400 font-medium mb-3">⚠️ {error}</p>
+            <div className="text-gray-400 text-sm space-y-2">
+              <p className="font-medium">Please check:</p>
+              <ul className="list-disc list-inside space-y-1 ml-2">
+                <li>You are logged in</li>
+                <li>You have added at least one film to your list</li>
+                <li>Check browser console (F12) for detailed error logs</li>
+              </ul>
+              <div className="mt-4 p-3 bg-black/30 rounded">
+                <p className="text-xs text-gray-500 mb-1">Expected API endpoint:</p>
+                <code className="text-xs text-orange-400">GET /api/v1/film-lists</code>
+                <p className="text-xs text-gray-500 mt-2">Or check Postman documentation for the correct endpoint to get user's film lists.</p>
+              </div>
+            </div>
           </div>
         )}
 
