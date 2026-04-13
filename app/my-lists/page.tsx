@@ -40,69 +40,76 @@ function MyLists() {
       console.log('Fetching film lists...');
       console.log('Auth token present:', !!localStorage.getItem('token'));
       
-      // Try multiple possible endpoints
-      const endpoints = [
-        '/film-lists',
-        '/users/film-lists',
-        '/film-lists/user',
-      ];
+      // First, get current user info to get user ID
+      const meResponse = await api.get('/auth/me');
+      console.log('Me response:', meResponse.data);
       
-      let lastError = null;
-      
-      for (const endpoint of endpoints) {
-        try {
-          console.log(`Trying GET ${endpoint}...`);
-          const response = await api.get(endpoint);
-          
-          if (response.data.success) {
-            console.log(`✅ Success with GET ${endpoint}`);
-            console.log('Film lists response:', response.data);
-            
-            // Group by list_status
-            const grouped: { [key: string]: FilmListWithDetails[] } = {
-              watching: [],
-              completed: [],
-              plan_to_watch: [],
-            };
-            
-            const data = Array.isArray(response.data.data) ? response.data.data : [];
-            console.log(`Found ${data.length} items in film lists`);
-            
-            if (data.length === 0) {
-              console.log('No items found. User might not have added any films to lists yet.');
-            }
-            
-            data.forEach((item: FilmListWithDetails) => {
-              console.log('Processing item:', item);
-              if (item.list_status && grouped[item.list_status]) {
-                grouped[item.list_status].push(item);
-              } else {
-                console.warn('Unknown list_status:', item.list_status, 'Item:', item);
-              }
-            });
-            
-            console.log('Grouped lists:', grouped);
-            setLists(grouped);
-            return; // Success, exit function
-          }
-        } catch (err: any) {
-          console.log(`❌ Failed GET ${endpoint}:`, err.response?.status);
-          lastError = err;
-          continue;
-        }
+      if (!meResponse.data.success) {
+        throw new Error('Failed to get user info');
       }
       
-      // All endpoints failed
-      throw lastError || new Error('All endpoints failed');
+      const userId = meResponse.data.data.personal_info.id;
+      console.log('User ID:', userId);
+      
+      // Then get user detail which includes film_lists
+      const userResponse = await api.get(`/users/${userId}`);
+      console.log('User detail response:', userResponse.data);
+      
+      if (userResponse.data.success) {
+        const filmLists = userResponse.data.data.film_lists || [];
+        console.log(`Found ${filmLists.length} items in film lists`);
+        
+        // Group by list_status
+        const grouped: { [key: string]: FilmListWithDetails[] } = {
+          watching: [],
+          completed: [],
+          plan_to_watch: [],
+        };
+        
+        filmLists.forEach((item: any) => {
+          console.log('Processing item:', item);
+          
+          // Convert API response format to our interface
+          const filmListItem: FilmListWithDetails = {
+            id: item.id || '', // API might not return id
+            user_id: userId,
+            film_id: item.film_id || '',
+            film_title: item.film_title,
+            list_status: item.list_status,
+            visibility: item.visibility || 'public',
+            film: item.film ? {
+              id: item.film_id || '',
+              title: item.film_title,
+              images: item.film.images || [],
+              average_rating: item.film.average_rating || 0,
+            } : undefined,
+          };
+          
+          if (filmListItem.list_status && grouped[filmListItem.list_status]) {
+            grouped[filmListItem.list_status].push(filmListItem);
+          } else {
+            console.warn('Unknown list_status:', filmListItem.list_status, 'Item:', item);
+          }
+        });
+        
+        console.log('Grouped lists:', grouped);
+        console.log('Total by status:', {
+          watching: grouped.watching.length,
+          plan_to_watch: grouped.plan_to_watch.length,
+          completed: grouped.completed.length,
+        });
+        
+        setLists(grouped);
+      } else {
+        throw new Error(userResponse.data.message || 'Failed to fetch user details');
+      }
       
     } catch (error: any) {
       console.error('❌ Error fetching lists:', error);
       console.error('Error response:', error.response?.data);
       console.error('Error status:', error.response?.status);
       
-      if (error.response?.status === 404) {
-        setError('GET /api/v1/film-lists endpoint not found. Please check Postman documentation for the correct endpoint to retrieve user\'s film lists.');
-      } else if (error.response?.status === 401) {
+      if (error.response?.status === 401) {
         setError('Unauthorized. Please login again.');
       } else {
         setError(
@@ -259,22 +266,14 @@ function MyLists() {
         {error && (
           <div className="glass-card border-l-4 border-red-500 px-6 py-4 mb-8">
             <p className="text-red-400 font-medium mb-3">❌ {error}</p>
-            <div className="text-gray-400 text-sm space-y-3">
-              <p className="font-medium">Backend API Issue:</p>
-              <div className="p-3 bg-black/30 rounded">
-                <p className="text-xs text-gray-500 mb-2">The backend does not have a GET endpoint for retrieving user's film lists.</p>
-                <p className="text-xs text-orange-400 mb-1">Missing endpoint:</p>
-                <code className="text-xs text-white">GET /api/v1/film-lists</code>
-                <p className="text-xs text-gray-500 mt-2">This endpoint should return the authenticated user's film lists with film details.</p>
-              </div>
-              <div className="mt-3">
-                <p className="text-xs font-medium mb-1">What you can do:</p>
-                <ul className="list-disc list-inside space-y-1 ml-2 text-xs">
-                  <li>You can still ADD films to your list from the film detail page</li>
-                  <li>You can UPDATE visibility of existing lists</li>
-                  <li>Contact backend developer to implement GET /film-lists endpoint</li>
-                </ul>
-              </div>
+            <div className="text-gray-400 text-sm space-y-2">
+              <p className="font-medium">Troubleshooting:</p>
+              <ul className="list-disc list-inside space-y-1 ml-2 text-xs">
+                <li>Make sure you're logged in</li>
+                <li>Try adding a film to your list from the film detail page</li>
+                <li>Check browser console (F12) for detailed error logs</li>
+                <li>If error persists, try logging out and logging in again</li>
+              </ul>
             </div>
           </div>
         )}

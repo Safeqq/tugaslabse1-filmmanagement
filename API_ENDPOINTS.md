@@ -25,31 +25,30 @@ Base URL: `https://film-management-api.labse.id/api/v1`
 - **Note**: Film must be aired (not "not_yet_aired" status)
 
 ### Get User's Film Lists
-- **Status**: ❌ NOT IMPLEMENTED IN BACKEND
-- **Expected Endpoint**: `GET /film-lists`
-- **Expected Response**:
+- **Method**: GET
+- **Endpoint**: `/users/:id`
+- **Description**: Get user detail including their film lists
+- **Response**:
 ```json
 {
   "success": true,
-  "message": "success get film lists",
-  "data": [
-    {
-      "id": "list-id",
-      "user_id": "user-id",
-      "film_id": "film-id",
-      "list_status": "watching",
-      "visibility": "public",
-      "film": {
-        "id": "film-id",
-        "title": "Film Title",
-        "images": ["image1.jpg"],
-        "average_rating": 8.5
+  "message": "success get detail user",
+  "data": {
+    "id": "user-id",
+    "username": "username",
+    "display_name": "Display Name",
+    "bio": "User bio",
+    "film_lists": [
+      {
+        "film_title": "Film Title",
+        "list_status": "watching"
       }
-    }
-  ]
+    ],
+    "reviews": [...]
+  }
 }
 ```
-- **Note**: This endpoint needs to be implemented in the backend to display user's lists
+- **Note**: For My Lists page, first call GET `/auth/me` to get current user ID, then call GET `/users/:id`
 
 ### Update Film List Visibility
 - **Method**: PATCH
