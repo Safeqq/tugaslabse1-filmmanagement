@@ -16,6 +16,8 @@ export default function FilmDetailPage() {
   const [reviewText, setReviewText] = useState('');
   const [rating, setRating] = useState(5);
   const [submitting, setSubmitting] = useState(false);
+  const [addingToList, setAddingToList] = useState(false);
+  const [reactingTo, setReactingTo] = useState<string | null>(null);
 
   useEffect(() => {
     fetchFilmDetail();
@@ -63,31 +65,69 @@ export default function FilmDetailPage() {
   };
 
   const handleReaction = async (reviewId: string, status: 'like' | 'dislike') => {
-    if (!isAuthenticated()) return;
+    if (!isAuthenticated()) {
+      alert('Please login to react to reviews');
+      return;
+    }
 
     try {
-      await api.post('/reactions', { review_id: reviewId, status });
-      fetchFilmDetail();
-    } catch (error) {
+      setReactingTo(reviewId);
+      const response = await api.post('/reactions', { 
+        review_id: reviewId, 
+        status 
+      });
+      
+      if (response.data.success) {
+        // Refresh film data to get updated reactions
+        await fetchFilmDetail();
+      }
+    } catch (error: any) {
       console.error('Error adding reaction:', error);
+      const errorMsg = error.response?.data?.error || error.response?.data?.message || 'Failed to add reaction';
+      alert(errorMsg);
+    } finally {
+      setReactingTo(null);
     }
   };
 
   const handleAddToList = async (listStatus: 'watching' | 'completed' | 'plan_to_watch') => {
-    if (!isAuthenticated()) return;
+    if (!isAuthenticated()) {
+      alert('Please login to add films to your list');
+      return;
+    }
 
     try {
+      setAddingToList(true);
+      
+      // Log untuk debugging
+      console.log('Adding to list:', {
+        film_id: params.id,
+        list_status: listStatus,
+        visibility: 'public'
+      });
+      
       const response = await api.post('/film-lists', {
         film_id: params.id,
         list_status: listStatus,
+        visibility: 'public',
       });
       
+      console.log('Add to list response:', response.data);
+      
       if (response.data.success) {
-        alert('Added to your list!');
+        const statusText = listStatus === 'plan_to_watch' ? 'Plan to Watch' : 
+                          listStatus === 'watching' ? 'Watching' : 'Completed';
+        alert(`✅ Successfully added to ${statusText} list!`);
+      } else {
+        alert(response.data.message || 'Failed to add to list');
       }
     } catch (error: any) {
       console.error('Error adding to list:', error);
-      alert(error.response?.data?.error || 'Failed to add to list');
+      console.error('Error response:', error.response?.data);
+      const errorMsg = error.response?.data?.error || error.response?.data?.message || 'Failed to add to list';
+      alert(`❌ ${errorMsg}`);
+    } finally {
+      setAddingToList(false);
     }
   };
 
@@ -190,21 +230,24 @@ export default function FilmDetailPage() {
                 <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => handleAddToList('watching')}
-                    className="px-4 py-2 bg-orange-500 hover:bg-orange-600 rounded-lg font-medium transition-colors"
+                    disabled={addingToList}
+                    className="px-4 py-2 bg-orange-500 hover:bg-orange-600 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Watching
+                    {addingToList ? 'Adding...' : '📺 Watching'}
                   </button>
                   <button
                     onClick={() => handleAddToList('plan_to_watch')}
-                    className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-medium transition-colors"
+                    disabled={addingToList}
+                    className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Plan to Watch
+                    {addingToList ? 'Adding...' : '📋 Plan to Watch'}
                   </button>
                   <button
                     onClick={() => handleAddToList('completed')}
-                    className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-medium transition-colors"
+                    disabled={addingToList}
+                    className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Completed
+                    {addingToList ? 'Adding...' : '✅ Completed'}
                   </button>
                 </div>
               )}
@@ -289,22 +332,45 @@ export default function FilmDetailPage() {
                         </span>
                       </div>
                       <p className="text-gray-300 mb-3">{review.comment}</p>
-                      {isAuthenticated() && (
-                        <div className="flex gap-3">
-                          <button
-                            onClick={() => handleReaction(review.id, 'like')}
-                            className="text-sm text-gray-400 hover:text-green-500 transition-colors"
-                          >
-                            👍 Like
-                          </button>
-                          <button
-                            onClick={() => handleReaction(review.id, 'dislike')}
-                            className="text-sm text-gray-400 hover:text-red-500 transition-colors"
-                          >
-                            👎 Dislike
-                          </button>
-                        </div>
-                      )}
+                      
+                      {/* Reaction Buttons with Counts */}
+                      <div className="flex items-center gap-4">
+                        {isAuthenticated() && (
+                          <>
+                            <button
+                              onClick={() => handleReaction(review.id, 'like')}
+                              disabled={reactingTo === review.id}
+                              className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 rounded-lg text-sm transition-colors disabled:opacity-50"
+                            >
+                              <span className="text-lg">👍</span>
+                              <span className="text-green-400 font-medium">
+                                {review.like_count || 0}
+                              </span>
+                            </button>
+                            <button
+                              onClick={() => handleReaction(review.id, 'dislike')}
+                              disabled={reactingTo === review.id}
+                              className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded-lg text-sm transition-colors disabled:opacity-50"
+                            >
+                              <span className="text-lg">👎</span>
+                              <span className="text-red-400 font-medium">
+                                {review.dislike_count || 0}
+                              </span>
+                            </button>
+                          </>
+                        )}
+                        
+                        {!isAuthenticated() && (
+                          <div className="flex items-center gap-4 text-sm text-gray-500">
+                            <span className="flex items-center gap-1">
+                              👍 {review.like_count || 0}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              👎 {review.dislike_count || 0}
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ))
                 ) : (

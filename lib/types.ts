@@ -35,6 +35,8 @@ export interface Review {
   comment: string;
   created_at: string;
   reactions?: Reaction[];
+  like_count?: number;
+  dislike_count?: number;
 }
 
 export interface Reaction {
