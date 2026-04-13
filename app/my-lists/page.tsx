@@ -59,29 +59,44 @@ function MyLists() {
         const filmLists = userResponse.data.data.film_lists || [];
         console.log(`Found ${filmLists.length} items in film lists`);
         
-        // Group by list_status
+        // Fetch all films to get complete details
+        const filmsResponse = await api.get('/films', { params: { take: 100, page: 1 } });
+        const allFilms = filmsResponse.data.success ? filmsResponse.data.data : [];
+        console.log(`Fetched ${allFilms.length} films for matching`);
+        
+        // Create a map of film titles to film details
+        const filmMap = new Map();
+        allFilms.forEach((film: any) => {
+          filmMap.set(film.title.toLowerCase(), film);
+        });
+        
+        // Group by list_status and enrich with film details
         const grouped: { [key: string]: FilmListWithDetails[] } = {
           watching: [],
           completed: [],
           plan_to_watch: [],
         };
         
-        filmLists.forEach((item: any) => {
-          console.log('Processing item:', item);
+        filmLists.forEach((item: any, index: number) => {
+          console.log(`Processing item ${index + 1}:`, item);
+          
+          // Find matching film by title
+          const filmDetail = filmMap.get(item.film_title?.toLowerCase());
+          console.log('Matched film detail:', filmDetail);
           
           // Convert API response format to our interface
           const filmListItem: FilmListWithDetails = {
-            id: item.id || '', // API might not return id
+            id: item.id || `temp-${index}`,
             user_id: userId,
-            film_id: item.film_id || '',
+            film_id: filmDetail?.id || '',
             film_title: item.film_title,
             list_status: item.list_status,
             visibility: item.visibility || 'public',
-            film: item.film ? {
-              id: item.film_id || '',
-              title: item.film_title,
-              images: item.film.images || [],
-              average_rating: item.film.average_rating || 0,
+            film: filmDetail ? {
+              id: filmDetail.id,
+              title: filmDetail.title,
+              images: filmDetail.images || [],
+              average_rating: filmDetail.average_rating || 0,
             } : undefined,
           };
           
