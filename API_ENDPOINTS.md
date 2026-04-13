@@ -7,30 +7,36 @@ Base URL: `https://film-management-api.labse.id/api/v1`
 ### Add Film to List
 - **Method**: POST
 - **Endpoint**: `/film-lists`
+- **Headers**: Authorization: Bearer {token}
 - **Body**:
 ```json
 {
   "film_id": "3a30fbf0-c160-432a-b5e8-fa870d44a437",
-  "list_status": "watching", // or "completed" or "plan_to_watch"
-  "visibility": "public" // or "private"
+  "list_status": "watching" // or "completed" or "plan_to_watch"
 }
 ```
-
-### Get User's Film Lists
-- **Method**: GET
-- **Endpoint**: `/film-lists`
-- **Headers**: Authorization: Bearer {token}
-- **Response**: 
+- **Response**:
 ```json
 {
   "success": true,
-  "message": "Success",
+  "message": "success create film list"
+}
+```
+- **Note**: Film must be aired (not "not_yet_aired" status)
+
+### Get User's Film Lists
+- **Status**: ❌ NOT IMPLEMENTED IN BACKEND
+- **Expected Endpoint**: `GET /film-lists`
+- **Expected Response**:
+```json
+{
+  "success": true,
+  "message": "success get film lists",
   "data": [
     {
       "id": "list-id",
       "user_id": "user-id",
       "film_id": "film-id",
-      "film_title": "Film Title",
       "list_status": "watching",
       "visibility": "public",
       "film": {
@@ -43,7 +49,7 @@ Base URL: `https://film-management-api.labse.id/api/v1`
   ]
 }
 ```
-- **Note**: Returns current authenticated user's film lists
+- **Note**: This endpoint needs to be implemented in the backend to display user's lists
 
 ### Update Film List Visibility
 - **Method**: PATCH

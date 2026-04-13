@@ -257,19 +257,23 @@ function MyLists() {
         </div>
 
         {error && (
-          <div className="glass-card border-l-4 border-yellow-500 px-6 py-4 mb-8">
-            <p className="text-yellow-400 font-medium mb-3">⚠️ {error}</p>
-            <div className="text-gray-400 text-sm space-y-2">
-              <p className="font-medium">Please check:</p>
-              <ul className="list-disc list-inside space-y-1 ml-2">
-                <li>You are logged in</li>
-                <li>You have added at least one film to your list</li>
-                <li>Check browser console (F12) for detailed error logs</li>
-              </ul>
-              <div className="mt-4 p-3 bg-black/30 rounded">
-                <p className="text-xs text-gray-500 mb-1">Expected API endpoint:</p>
-                <code className="text-xs text-orange-400">GET /api/v1/film-lists</code>
-                <p className="text-xs text-gray-500 mt-2">Or check Postman documentation for the correct endpoint to get user's film lists.</p>
+          <div className="glass-card border-l-4 border-red-500 px-6 py-4 mb-8">
+            <p className="text-red-400 font-medium mb-3">❌ {error}</p>
+            <div className="text-gray-400 text-sm space-y-3">
+              <p className="font-medium">Backend API Issue:</p>
+              <div className="p-3 bg-black/30 rounded">
+                <p className="text-xs text-gray-500 mb-2">The backend does not have a GET endpoint for retrieving user's film lists.</p>
+                <p className="text-xs text-orange-400 mb-1">Missing endpoint:</p>
+                <code className="text-xs text-white">GET /api/v1/film-lists</code>
+                <p className="text-xs text-gray-500 mt-2">This endpoint should return the authenticated user's film lists with film details.</p>
+              </div>
+              <div className="mt-3">
+                <p className="text-xs font-medium mb-1">What you can do:</p>
+                <ul className="list-disc list-inside space-y-1 ml-2 text-xs">
+                  <li>You can still ADD films to your list from the film detail page</li>
+                  <li>You can UPDATE visibility of existing lists</li>
+                  <li>Contact backend developer to implement GET /film-lists endpoint</li>
+                </ul>
               </div>
             </div>
           </div>
