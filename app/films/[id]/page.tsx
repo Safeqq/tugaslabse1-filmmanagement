@@ -29,7 +29,25 @@ export default function FilmDetailPage() {
       const filmRes = await api.get(`/films/${params.id}`);
       
       if (filmRes.data.success) {
-        setFilm(filmRes.data.data);
+        const filmData = filmRes.data.data;
+        
+        // Calculate like and dislike counts from reactions array
+        if (filmData.reviews && Array.isArray(filmData.reviews)) {
+          filmData.reviews = filmData.reviews.map((review: any) => {
+            const reactions = review.reactions || [];
+            const likeCount = reactions.filter((r: any) => r.status === 'like').length;
+            const dislikeCount = reactions.filter((r: any) => r.status === 'dislike').length;
+            
+            return {
+              ...review,
+              like_count: likeCount,
+              dislike_count: dislikeCount,
+            };
+          });
+        }
+        
+        console.log('Film data with reaction counts:', filmData);
+        setFilm(filmData);
       }
     } catch (error) {
       console.error('Error fetching film:', error);
